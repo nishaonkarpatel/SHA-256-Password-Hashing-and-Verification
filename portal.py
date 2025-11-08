@@ -116,9 +116,9 @@ with tab_signup:
             st.success("Account created successfully. You can log in now.")
 
     # ---------- CSV EXPORT (Teacher Demo) ----------
-    st.markdown("### Evidence of Password Hashing & Database Security")
+    st.markdown("Evidence of Password Hashing & Database Security")
     
-    with st.expander("Show SQLite → CSV Export"):
+    with st.expander("CSV Export:"):
         st.info("This section demonstrates that passwords are stored only as salted SHA-256 hashes.")
         project_dir = os.path.abspath(os.path.dirname(__file__))
         export_path = os.path.join(project_dir, "auth_portal_all_dump.csv")
