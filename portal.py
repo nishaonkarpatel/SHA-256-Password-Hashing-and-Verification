@@ -115,41 +115,68 @@ with tab_signup:
             insert_user(username, salt, h, int(iterations))
             st.success("Account created successfully. You can log in now.")
 
-# ---------- CSV EXPORT (Teacher Demo) ----------
-st.markdown("### Evidence of Password Hashing & Database Security")
+    # ---------- CSV EXPORT (Teacher Demo) ----------
+    st.markdown("### Evidence of Password Hashing & Database Security")
+    
+    with st.expander("Show SQLite → CSV Export"):
+        st.info("This section demonstrates that passwords are stored only as salted SHA-256 hashes.")
+        project_dir = os.path.abspath(os.path.dirname(__file__))
+        export_path = os.path.join(project_dir, "auth_portal_all_dump.csv")
+    
+        if st.button("Export user database to CSV"):
+            try:
+                rows_written = 0
+                with sqlite3.connect(DB_PATH, check_same_thread=False) as conn:
+                    cur = conn.execute("SELECT username, salt, hash, iterations, created_at FROM users")
+                    with open(export_path, "w", newline='', encoding="utf-8") as f:
+                        writer = csv.writer(f)
+                        writer.writerow(["username", "salt_base64", "hash_hex", "iterations", "created_at"])
+                        for r in cur.fetchall():
+                            username = r[0]
+                            salt_b64 = base64.b64encode(r[1]).decode("utf-8")
+                            hash_hex = r[2].hex()
+                            writer.writerow([username, salt_b64, hash_hex, r[3], r[4]])
+                            rows_written += 1
+                st.success(f"Exported {rows_written} rows to {os.path.basename(export_path)}")
+    
+                # Download button for the teacher
+                with open(export_path, "rb") as f:
+                    data = f.read()
+                st.download_button(
+                    "Download CSV (view salted hashes)",
+                    data,
+                    file_name=os.path.basename(export_path),
+                    mime="text/csv"
+                )
+            except Exception as e:
+                st.error(f"Export failed: {e}")
+#------------LOG IN------------
+with tab_login:
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.subheader("Access your portal")
+    u = st.text_input("College Email / USN", key="login_user").strip()
+    p = st.text_input("Password", type="password", key="login_pw")
+    colA, colB = st.columns([1,1])
+    with colA:
+        remember = st.checkbox("Remember me", value=False, help="For demo only (no cookies stored).")
+    with colB:
+        st.caption("Forgot password? Contact the department admin.")
 
-with st.expander("Show SQLite → CSV Export"):
-    st.info("This section demonstrates that passwords are stored only as salted SHA-256 hashes.")
-    project_dir = os.path.abspath(os.path.dirname(__file__))
-    export_path = os.path.join(project_dir, "auth_portal_all_dump.csv")
-
-    if st.button("Export user database to CSV"):
-        try:
-            rows_written = 0
-            with sqlite3.connect(DB_PATH, check_same_thread=False) as conn:
-                cur = conn.execute("SELECT username, salt, hash, iterations, created_at FROM users")
-                with open(export_path, "w", newline='', encoding="utf-8") as f:
-                    writer = csv.writer(f)
-                    writer.writerow(["username", "salt_base64", "hash_hex", "iterations", "created_at"])
-                    for r in cur.fetchall():
-                        username = r[0]
-                        salt_b64 = base64.b64encode(r[1]).decode("utf-8")
-                        hash_hex = r[2].hex()
-                        writer.writerow([username, salt_b64, hash_hex, r[3], r[4]])
-                        rows_written += 1
-            st.success(f"Exported {rows_written} rows to {os.path.basename(export_path)}")
-
-            # Download button for the teacher
-            with open(export_path, "rb") as f:
-                data = f.read()
-            st.download_button(
-                "Download CSV (view salted hashes)",
-                data,
-                file_name=os.path.basename(export_path),
-                mime="text/csv"
-            )
-        except Exception as e:
-            st.error(f"Export failed: {e}")
+    if st.button("Log In"):
+        user = get_user(u)
+        if not user:
+            st.error("No such account found.")
+        else:
+            t0 = time.perf_counter()
+            test_hash = pbkdf2_sha256(p, user["salt"], user["iterations"])
+            t1 = time.perf_counter()
+            ok = hmac.compare_digest(test_hash, user["hash"])
+            if ok:
+                st.success(f"Welcome, {u}! ✅ (Hashing time: {(t1 - t0)*1000:.1f} ms)")
+                st.balloons()
+            else:
+                st.error("Incorrect password. Please try again.")
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # ---------- FOOTER ----------
 st.markdown('<p class="footer-note">© BMS Institute of Technology & Management • Yelahanka, Bengaluru</p>', unsafe_allow_html=True)
