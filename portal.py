@@ -33,7 +33,6 @@ def header_with_logo():
         st.image(LOGO_PATH, width=820)
     else:
         st.write("BMS Institute of Technology & Management")
-    st.markdown('<hr class="top-divider">', unsafe_allow_html=True)
 
 # -------------------- DB --------------------
 def init_db():
