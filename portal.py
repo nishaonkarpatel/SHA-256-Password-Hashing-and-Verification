@@ -1,4 +1,3 @@
-
 import streamlit as st
 import sqlite3
 import os, base64, time, secrets, string, hashlib, hmac
@@ -8,7 +7,7 @@ from datetime import datetime
 DB_PATH = "auth_portal.db"
 DEFAULT_ITERS = 100_000
 SALT_LEN = 16
-LOGO_PATH = "bmsitLogo.png"  # place your logo in the app working directory
+LOGO_PATH = "bmsitLogo.png"  # make sure this file is in the same folder as this .py
 
 PRIMARY = "#0E1A3B"   # deep navy
 ACCENT  = "#D9252A"   # BMS red
@@ -53,7 +52,8 @@ def get_user(username: str):
             (username,),
         )
         row = cur.fetchone()
-        if not row: return None
+        if not row:
+            return None
         return {"username": row[0], "salt": row[1], "hash": row[2], "iterations": int(row[3])}
 
 # -------------------- Crypto --------------------
@@ -65,7 +65,6 @@ def pbkdf2_sha256(password: str, salt: bytes, iterations: int) -> bytes:
 def gen_salt(n: int = SALT_LEN) -> bytes:
     return secrets.token_bytes(n)
 
-
 # -------------------- Styling --------------------
 def inject_css():
     st.markdown(f"""
@@ -73,41 +72,32 @@ def inject_css():
     .stApp {{
         background: radial-gradient(1400px circle at 10% 5%, {MUTED} 0%, #ffffff 40%);
     }}
-    .portal-header {{
-        background: linear-gradient(90deg, {PRIMARY} 0%, #182A67 60%);
-        padding: 16px 20px;
-        color: white;
-        border-radius: 14px;
-        box-shadow: 0 8px 24px rgba(0,0,0,0.18);
-        margin-bottom: 22px;
-    }}
-    .portal-title {{
-        font-size: 28px; font-weight: 800; letter-spacing: 0.2px; margin: 0;
-    }}
-    .portal-subtitle {{
-        margin: 2px 0 0 0; font-size: 14px; opacity: 0.9;
-    }}
     .card {{
         background: white; border-radius: 14px; padding: 18px;
         border: 1px solid #e6eaf0;
         box-shadow: 0 6px 18px rgba(22, 29, 58, 0.08);
-    }}
-    .accent {{
-        color: {ACCENT};
+        margin-top: 10px;
     }}
     .footer-note {{
         color: #5d6b8a; font-size: 12px; text-align:center; margin-top: 24px;
+    }}
+    .top-divider {{
+        border: none;
+        border-top: 2px solid rgba(0,0,0,0.04);
+        margin: 6px 0 8px 0;
     }}
     </style>
     """, unsafe_allow_html=True)
 
 def header_with_logo():
-    cols = st.columns([1,5])
-    with cols[0]:
-        if os.path.exists(LOGO_PATH):
-            st.image(LOGO_PATH, use_container_width=True)
-        else:
-            st.write("")
+    # full-width, centered image, bigger
+    if os.path.exists(LOGO_PATH):
+        # width=820 makes it like the screenshot; adjust if needed
+        st.image(LOGO_PATH, width=820)
+    else:
+        st.write("BMS Institute of Technology & Management")
+    # thin line below the banner, like your reference
+    st.markdown('<hr class="top-divider">', unsafe_allow_html=True)
 
 # -------------------- App --------------------
 st.set_page_config(page_title="BMSIT Student Portal", page_icon="🎓", layout="centered")
@@ -117,17 +107,25 @@ init_db()
 
 tab_signup, tab_login = st.tabs(["📝 Student Sign Up", "🔓 Student Log In"])
 
+# ---------- SIGN UP ----------
 with tab_signup:
     st.subheader("Create your campus account")
     col1, col2 = st.columns(2)
     with col1:
         username = st.text_input("College Email / USN").strip()
     with col2:
-        iterations = st.number_input("Hashing iterations", min_value=10_000, max_value=2_000_000,
-                                     value=DEFAULT_ITERS, step=10_000,
-                                     help="Higher = stronger (but slower).")
+        iterations = st.number_input(
+            "Hashing iterations",
+            min_value=10_000,
+            max_value=2_000_000,
+            value=DEFAULT_ITERS,
+            step=10_000,
+            help="Higher = stronger (but slower)."
+        )
+
     pw = st.text_input("Password", type="password", help="Use 14+ chars, mix of cases, digits & symbols.")
     pw2 = st.text_input("Re-enter Password", type="password")
+
     if st.button("Create Account", type="primary"):
         if not username or not pw:
             st.error("Username and password are required.")
@@ -141,13 +139,12 @@ with tab_signup:
             insert_user(username, salt, h, int(iterations))
             st.success("Account created successfully. You can log in now.")
 
-    st.markdown('</div>', unsafe_allow_html=True)
-
+# ---------- LOG IN ----------
 with tab_login:
-    st.markdown('<div class="card">', unsafe_allow_html=True)
     st.subheader("Access your portal")
     u = st.text_input("College Email / USN", key="login_user").strip()
     p = st.text_input("Password", type="password", key="login_pw")
+
     colA, colB = st.columns([1,1])
     with colA:
         remember = st.checkbox("Remember me", value=False, help="For demo only (no cookies stored).")
@@ -168,6 +165,6 @@ with tab_login:
                 st.balloons()
             else:
                 st.error("Incorrect password. Please try again.")
-    st.markdown('</div>', unsafe_allow_html=True)
 
+# footer
 st.markdown('<p class="footer-note">© BMS Institute of Technology & Management • Yelahanka, Bengaluru</p>', unsafe_allow_html=True)
