@@ -116,43 +116,43 @@ with tab_signup:
             st.success("Account created successfully. You can log in now.")
 
     # ---------- CSV EXPORT (Teacher Demo) ----------
-    st.markdown("Evidence of Password Hashing & Database Security")
+    st.markdown("### Evidence of Password Hashing & Database Security")
     
     with st.expander("CSV Export:"):
         st.info("This section demonstrates that passwords are stored only as salted SHA-256 hashes.")
         project_dir = os.path.abspath(os.path.dirname(__file__))
         export_path = os.path.join(project_dir, "auth_portal_all_dump.csv")
     
-        # -------------------- CSV Export for Teacher Demo --------------------
-        with st.expander("CSV Export:"):
-            st.info("This section demonstrates that passwords are stored only as salted SHA-256 hashes.")
-            project_dir = os.path.abspath(os.path.dirname(__file__))
-            export_path = os.path.join(project_dir, "auth_portal_all_dump.csv")
-        
-            if st.button("Export user database to CSV"):
-                try:
-                    rows_written = 0
-                    with sqlite3.connect(DB_PATH, check_same_thread=False) as conn:
-                        cur = conn.execute("SELECT username, salt, hash, iterations, created_at FROM users")
-                        with open(export_path, "w", newline="", encoding="utf-8") as f:
-                            writer = csv.writer(f)
-                            writer.writerow(["username", "salt_base64", "hash_hex", "iterations", "created_at"])
-                            for r in cur.fetchall():
-                                username = r[0]
-                                salt_b64 = base64.b64encode(r[1]).decode("utf-8")
-                                hash_hex = r[2].hex()
-                                writer.writerow([username, salt_b64, hash_hex, r[3], r[4]])
-                                rows_written += 1
-        
-                    st.success(f"Exported {rows_written} rows to {export_path}")
-        
-                    # Automatically open the folder containing the file (works on Windows)
-                    try:
-                        os.startfile(os.path.dirname(export_path))
-                    except Exception:
-                        st.info("File created successfully — open folder manually if needed.")
-                except Exception as e:
-                    st.error(f"Export failed: {e}")
+        if st.button("Export user database to CSV"):
+            try:
+                import io, csv
+                rows_written = 0
+                output = io.StringIO()
+                writer = csv.writer(output)
+                writer.writerow(["username", "salt_base64", "hash_hex", "iterations", "created_at"])
+    
+                with sqlite3.connect(DB_PATH, check_same_thread=False) as conn:
+                    cur = conn.execute("SELECT username, salt, hash, iterations, created_at FROM users")
+                    for r in cur.fetchall():
+                        username = r[0]
+                        salt_b64 = base64.b64encode(r[1]).decode("utf-8")
+                        hash_hex = r[2].hex()
+                        writer.writerow([username, salt_b64, hash_hex, r[3], r[4]])
+                        rows_written += 1
+    
+                csv_data = output.getvalue().encode("utf-8")
+                st.success(f"Exported {rows_written} rows.")
+                st.download_button(
+                    label="Download CSV",
+                    data=csv_data,
+                    file_name="auth_portal_all_dump.csv",
+                    mime="text/csv",
+                )
+    
+            except Exception as e:
+                st.error(f"Export failed: {e}")
+
+
 #------------LOG IN------------
 with tab_login:
     st.markdown('<div class="card">', unsafe_allow_html=True)
