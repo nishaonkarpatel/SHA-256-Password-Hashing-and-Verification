@@ -96,9 +96,7 @@ def header_with_logo():
         st.image(LOGO_PATH, width=820)
     else:
         st.write("BMS Institute of Technology & Management")
-    # thin line below the banner, like your reference
-    st.markdown('<hr class="top-divider">', unsafe_allow_html=True)
-
+    
 # -------------------- App --------------------
 st.set_page_config(page_title="BMSIT Student Portal", page_icon="🎓", layout="centered")
 inject_css()
