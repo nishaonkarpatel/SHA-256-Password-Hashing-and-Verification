@@ -111,7 +111,7 @@ def header_with_logo():
     with cols[1]:
         st.markdown(f"""
         <div class="portal-header">
-            <div class="portal-title">BMSIT Student Portal</div>
+            
         </div>
         """, unsafe_allow_html=True)
 
