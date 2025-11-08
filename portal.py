@@ -1,28 +1,39 @@
 import streamlit as st
-import sqlite3
-import os, base64, time, secrets, string, hashlib, hmac
+import sqlite3, os, base64, time, secrets, string, hashlib, hmac, csv
 from datetime import datetime
-import csv
 
 # -------------------- Config --------------------
 DB_PATH = "auth_portal.db"
 DEFAULT_ITERS = 100_000
 SALT_LEN = 16
-LOGO_PATH = "bmsitLogo.png"  # make sure this file is in the same folder as this .py
+LOGO_PATH = "bmsitLogo.png"  # place your logo in the same folder
 
-PRIMARY = "#0E1A3B"   # deep navy
-ACCENT  = "#D9252A"   # BMS red
-MUTED   = "#EEF1F7"   # soft background
+# -------------------- Styling --------------------
+def inject_css():
+    st.markdown("""
+    <style>
+    .stApp {
+        background: radial-gradient(1400px circle at 10% 5%, #EEF1F7 0%, #ffffff 40%);
+    }
+    .footer-note {
+        color: #5d6b8a; font-size: 12px; text-align:center; margin-top: 24px;
+    }
+    .top-divider {
+        border: none;
+        border-top: 2px solid rgba(0,0,0,0.04);
+        margin: 6px 0 8px 0;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
-# -------------------- Secrets / Pepper --------------------
-def _pepper_bytes() -> bytes:
-    pep = os.environ.get("AUTH_PEP", "") or st.secrets.get("AUTH_PEP", "")
-    if not pep:
-        return b""
-    try:
-        return base64.b64decode(pep)
-    except Exception:
-        return pep.encode("utf-8")
+# -------------------- Logo Header --------------------
+def header_with_logo():
+    # full-width, centered image, bigger
+    if os.path.exists(LOGO_PATH):
+        st.image(LOGO_PATH, width=820)
+    else:
+        st.write("BMS Institute of Technology & Management")
+    st.markdown('<hr class="top-divider">', unsafe_allow_html=True)
 
 # -------------------- DB --------------------
 def init_db():
@@ -59,45 +70,11 @@ def get_user(username: str):
 
 # -------------------- Crypto --------------------
 def pbkdf2_sha256(password: str, salt: bytes, iterations: int) -> bytes:
-    pepper = _pepper_bytes()
-    full_salt = salt + pepper
-    return hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), full_salt, iterations, dklen=32)
+    return hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, iterations, dklen=32)
 
 def gen_salt(n: int = SALT_LEN) -> bytes:
     return secrets.token_bytes(n)
 
-# -------------------- Styling --------------------
-def inject_css():
-    st.markdown(f"""
-    <style>
-    .stApp {{
-        background: radial-gradient(1400px circle at 10% 5%, {MUTED} 0%, #ffffff 40%);
-    }}
-    .card {{
-        background: white; border-radius: 14px; padding: 18px;
-        border: 1px solid #e6eaf0;
-        box-shadow: 0 6px 18px rgba(22, 29, 58, 0.08);
-        margin-top: 10px;
-    }}
-    .footer-note {{
-        color: #5d6b8a; font-size: 12px; text-align:center; margin-top: 24px;
-    }}
-    .top-divider {{
-        border: none;
-        border-top: 2px solid rgba(0,0,0,0.04);
-        margin: 6px 0 8px 0;
-    }}
-    </style>
-    """, unsafe_allow_html=True)
-
-def header_with_logo():
-    # full-width, centered image, bigger
-    if os.path.exists(LOGO_PATH):
-        # width=820 makes it like the screenshot; adjust if needed
-        st.image(LOGO_PATH, width=820)
-    else:
-        st.write("BMS Institute of Technology & Management")
-    
 # -------------------- App --------------------
 st.set_page_config(page_title="BMSIT Student Portal", page_icon="🎓", layout="centered")
 inject_css()
@@ -109,6 +86,7 @@ tab_signup, tab_login = st.tabs(["📝 Student Sign Up", "🔓 Student Log In"])
 # ---------- SIGN UP ----------
 with tab_signup:
     st.subheader("Create your campus account")
+
     col1, col2 = st.columns(2)
     with col1:
         username = st.text_input("College Email / USN").strip()
@@ -137,27 +115,23 @@ with tab_signup:
             h = pbkdf2_sha256(pw, salt, int(iterations))
             insert_user(username, salt, h, int(iterations))
             st.success("Account created successfully. You can log in now.")
-    """with st.expander("Show SQLite → CSV Export"):
+
+# ---------- CSV EXPORT (Teacher Demo) ----------
+st.markdown("### Evidence of Password Hashing & Database Security")
+
+with st.expander("Show SQLite → CSV Export"):
     st.info("This section demonstrates that passwords are stored only as salted SHA-256 hashes.")
     project_dir = os.path.abspath(os.path.dirname(__file__))
-    export_path = os.path.join(project_dir, "auth_portal_all_dump.csv")"""
+    export_path = os.path.join(project_dir, "auth_portal_all_dump.csv")
 
-    
-    # -------------------- Demo purpose for teacher --------------------
-    
     if st.button("Export user database to CSV"):
-        st.warning("View salts and password hashes.")
         try:
             rows_written = 0
             with sqlite3.connect(DB_PATH, check_same_thread=False) as conn:
-                cur = conn.execute(
-                    "SELECT username, salt, hash, iterations, created_at FROM users"
-                )
+                cur = conn.execute("SELECT username, salt, hash, iterations, created_at FROM users")
                 with open(export_path, "w", newline='', encoding="utf-8") as f:
                     writer = csv.writer(f)
-                    writer.writerow(
-                        ["username", "salt_base64", "hash_hex", "iterations", "created_at"]
-                    )
+                    writer.writerow(["username", "salt_base64", "hash_hex", "iterations", "created_at"])
                     for r in cur.fetchall():
                         username = r[0]
                         salt_b64 = base64.b64encode(r[1]).decode("utf-8")
@@ -173,31 +147,10 @@ with tab_signup:
                 "Download CSV (view salted hashes)",
                 data,
                 file_name=os.path.basename(export_path),
-                mime="text/csv",
+                mime="text/csv"
             )
         except Exception as e:
             st.error(f"Export failed: {e}")
 
-# ---------- LOG IN ----------
-with tab_login:
-    st.subheader("Access your portal")
-    u = st.text_input("College Email / USN", key="login_user").strip()
-    p = st.text_input("Password", type="password", key="login_pw")
-
-    if st.button("Log In"):
-        user = get_user(u)
-        if not user:
-            st.error("No such account found.")
-        else:
-            t0 = time.perf_counter()
-            test_hash = pbkdf2_sha256(p, user["salt"], user["iterations"])
-            t1 = time.perf_counter()
-            ok = hmac.compare_digest(test_hash, user["hash"])
-            if ok:
-                st.success(f"Welcome, {u}!")
-                st.balloons()
-            else:
-                st.error("Incorrect password. Please try again.")
-
-# footer
+# ---------- FOOTER ----------
 st.markdown('<p class="footer-note">© BMS Institute of Technology & Management • Yelahanka, Bengaluru</p>', unsafe_allow_html=True)
