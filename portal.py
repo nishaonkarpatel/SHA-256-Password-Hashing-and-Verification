@@ -108,12 +108,6 @@ def header_with_logo():
             st.image(LOGO_PATH, use_container_width=True)
         else:
             st.write("")
-    with cols[1]:
-        st.markdown(f"""
-        <div class="portal-header">
-            
-        </div>
-        """, unsafe_allow_html=True)
 
 # -------------------- App --------------------
 st.set_page_config(page_title="BMSIT Student Portal", page_icon="🎓", layout="centered")
@@ -124,7 +118,6 @@ init_db()
 tab_signup, tab_login = st.tabs(["📝 Student Sign Up", "🔓 Student Log In"])
 
 with tab_signup:
-    st.markdown('<div class="card">', unsafe_allow_html=True)
     st.subheader("Create your campus account")
     col1, col2 = st.columns(2)
     with col1:
