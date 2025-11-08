@@ -116,7 +116,7 @@ with tab_signup:
             st.success("Account created successfully. You can log in now.")
 
     # ---------- CSV EXPORT (Teacher Demo) ----------
-    st.markdown("Evidence of Password Hashing & Database Security")
+    st.markdown("### Evidence of Password Hashing & Database Security")
     
     with st.expander("CSV Export:"):
         st.info("This section demonstrates that passwords are stored only as salted SHA-256 hashes.")
@@ -125,31 +125,34 @@ with tab_signup:
     
         if st.button("Export user database to CSV"):
             try:
+                import io, csv
                 rows_written = 0
+                output = io.StringIO()
+                writer = csv.writer(output)
+                writer.writerow(["username", "salt_base64", "hash_hex", "iterations", "created_at"])
+    
                 with sqlite3.connect(DB_PATH, check_same_thread=False) as conn:
                     cur = conn.execute("SELECT username, salt, hash, iterations, created_at FROM users")
-                    with open(export_path, "w", newline='', encoding="utf-8") as f:
-                        writer = csv.writer(f)
-                        writer.writerow(["username", "salt_base64", "hash_hex", "iterations", "created_at"])
-                        for r in cur.fetchall():
-                            username = r[0]
-                            salt_b64 = base64.b64encode(r[1]).decode("utf-8")
-                            hash_hex = r[2].hex()
-                            writer.writerow([username, salt_b64, hash_hex, r[3], r[4]])
-                            rows_written += 1
-                st.success(f"Exported {rows_written} rows to {os.path.basename(export_path)}")
+                    for r in cur.fetchall():
+                        username = r[0]
+                        salt_b64 = base64.b64encode(r[1]).decode("utf-8")
+                        hash_hex = r[2].hex()
+                        writer.writerow([username, salt_b64, hash_hex, r[3], r[4]])
+                        rows_written += 1
     
-                # Download button for the teacher
-                with open(export_path, "rb") as f:
-                    data = f.read()
+                csv_data = output.getvalue().encode("utf-8")
+                st.success(f"Exported {rows_written} rows.")
                 st.download_button(
-                    "Download CSV (view salted hashes)",
-                    data,
-                    file_name=os.path.basename(export_path),
-                    mime="text/csv"
+                    label="Download CSV",
+                    data=csv_data,
+                    file_name="auth_portal_all_dump.csv",
+                    mime="text/csv",
                 )
+    
             except Exception as e:
                 st.error(f"Export failed: {e}")
+
+
 #------------LOG IN------------
 with tab_login:
     st.markdown('<div class="card">', unsafe_allow_html=True)
