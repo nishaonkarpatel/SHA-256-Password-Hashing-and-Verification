@@ -2,6 +2,7 @@ import streamlit as st
 import sqlite3
 import os, base64, time, secrets, string, hashlib, hmac
 from datetime import datetime
+import csv
 
 # -------------------- Config --------------------
 DB_PATH = "auth_portal.db"
@@ -136,6 +137,46 @@ with tab_signup:
             h = pbkdf2_sha256(pw, salt, int(iterations))
             insert_user(username, salt, h, int(iterations))
             st.success("Account created successfully. You can log in now.")
+    with st.expander("Show SQLite → CSV Export"):
+    st.info("This section demonstrates that passwords are stored only as salted SHA-256 hashes.")
+    project_dir = os.path.abspath(os.path.dirname(__file__))
+    export_path = os.path.join(project_dir, "auth_portal_all_dump.csv")
+
+    
+    # -------------------- Demo purpose for teacher --------------------
+    
+    if st.button("Export user database to CSV"):
+        st.warning("View salts and password hashes.")
+        try:
+            rows_written = 0
+            with sqlite3.connect(DB_PATH, check_same_thread=False) as conn:
+                cur = conn.execute(
+                    "SELECT username, salt, hash, iterations, created_at FROM users"
+                )
+                with open(export_path, "w", newline='', encoding="utf-8") as f:
+                    writer = csv.writer(f)
+                    writer.writerow(
+                        ["username", "salt_base64", "hash_hex", "iterations", "created_at"]
+                    )
+                    for r in cur.fetchall():
+                        username = r[0]
+                        salt_b64 = base64.b64encode(r[1]).decode("utf-8")
+                        hash_hex = r[2].hex()
+                        writer.writerow([username, salt_b64, hash_hex, r[3], r[4]])
+                        rows_written += 1
+            st.success(f"Exported {rows_written} rows to {os.path.basename(export_path)}")
+
+            # Download button for the teacher
+            with open(export_path, "rb") as f:
+                data = f.read()
+            st.download_button(
+                "Download CSV (view salted hashes)",
+                data,
+                file_name=os.path.basename(export_path),
+                mime="text/csv",
+            )
+        except Exception as e:
+            st.error(f"Export failed: {e}")
 
 # ---------- LOG IN ----------
 with tab_login:
@@ -153,7 +194,7 @@ with tab_login:
             t1 = time.perf_counter()
             ok = hmac.compare_digest(test_hash, user["hash"])
             if ok:
-                st.success(f"Welcome, {u}! ✅ (Hashing time: {(t1 - t0)*1000:.1f} ms)")
+                st.success(f"Welcome, {u}!")
                 st.balloons()
             else:
                 st.error("Incorrect password. Please try again.")
