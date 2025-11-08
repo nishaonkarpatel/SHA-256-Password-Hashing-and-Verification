@@ -137,10 +137,10 @@ with tab_signup:
             h = pbkdf2_sha256(pw, salt, int(iterations))
             insert_user(username, salt, h, int(iterations))
             st.success("Account created successfully. You can log in now.")
-    with st.expander("Show SQLite → CSV Export"):
+    """with st.expander("Show SQLite → CSV Export"):
     st.info("This section demonstrates that passwords are stored only as salted SHA-256 hashes.")
     project_dir = os.path.abspath(os.path.dirname(__file__))
-    export_path = os.path.join(project_dir, "auth_portal_all_dump.csv")
+    export_path = os.path.join(project_dir, "auth_portal_all_dump.csv")"""
 
     
     # -------------------- Demo purpose for teacher --------------------
