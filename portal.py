@@ -143,12 +143,6 @@ with tab_login:
     u = st.text_input("College Email / USN", key="login_user").strip()
     p = st.text_input("Password", type="password", key="login_pw")
 
-    colA, colB = st.columns([1,1])
-    with colA:
-        remember = st.checkbox("Remember me", value=False, help="For demo only (no cookies stored).")
-    with colB:
-        st.caption("Forgot password? Contact the department admin.")
-
     if st.button("Log In"):
         user = get_user(u)
         if not user:
